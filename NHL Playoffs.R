@@ -2,7 +2,6 @@
 #Author: Nicole Tucker
 
 
-
 # Load Packages -----------------------------------------------------------
 
 library(tidyverse)
@@ -65,7 +64,81 @@ theme_reach <- function() {
 }
 
 
+
+# Exploring Shooter Time on Ice and Shots Taken ---------------------------
+
+#Hypothesis: player's come on the ice and shoot right away because that's when they have energy and are excited
+
+#Conclusion: the data backs up the hypothesis as most players shoot within a minute of getting on the ice.
+
+playoff_shot_data %>%
+  filter(shooterTimeOnIce <= 150) %>%
+  ggplot(aes(x = shooterTimeOnIce)) +
+  geom_density(fill = "darkorange", alpha = 0.8) +
+  geom_vline(xintercept = quantile(playoff_shot_data$shooterTimeOnIce,0.25), linetype = "dashed") +
+  geom_vline(xintercept = quantile(playoff_shot_data$shooterTimeOnIce,0.50), linetype = "dashed") +
+  geom_vline(xintercept = quantile(playoff_shot_data$shooterTimeOnIce,0.75), linetype = "dashed") +
+  theme_reach() +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(x = "Player's Time on Ice",
+       y = "Density",
+       title = "Player's Shoot Mostly Between 16 and 42 Seconds On Ice")
+
+
+
+# Shot Distance vs Rebounds -----------------------------------------------
+
+#Hypothesis: taking a page out of basketball analytics, we hypothesized that longer
+#shot distance would lead to more rebounds.
+
+#Conclusion: the opposite was true as a shorter shot distance actually led to a higher chance of a reboud. 
+playoff_shot_data %>%
+  ggplot(aes(x = arenaAdjustedShotDistance, color = as.factor(shotGeneratedRebound))) +
+  stat_ecdf(size = 1.5) +
+  theme_reach() +
+  scale_color_manual("Shot Generated Rebound",values=c("darkorange","darkblue")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  geom_hline(yintercept = 0.50, linetype = "dashed", color = "red") +
+  labs(x = "Arena Adjusted Shot Distance",
+       y = "Percent of Rebounds",
+       fill = "Shot Generated Rebound",
+       title = "Shots Closer to the Goal Generate More Rebounds") +
+  theme(legend.position = "bottom")
+
+
+
+# Amount of Shots and Goals vs Period of Game ----------------------------
+
+#Hypothesis: we thought that the period would affect how the outcome of shots taken. 
+#for example, we thought that teams would be aggressive at the end of games and take more shots
+
+#Conclusion:however that isn't the case as shot-taking actually goes down while shot-making goes up in the end of the 3rd period.
+
+playoff_shot_data %>%
+  filter(time<=3600) %>% 
+  ggplot(aes(x = time)) + 
+  geom_histogram(aes(fill = event)) +
+  theme_reach() +
+  scale_fill_brewer(palette = "Paired") +
+  geom_vline(xintercept = 1200) +
+  geom_vline(xintercept = 2400) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  facet_grid(event ~., margins = TRUE, scales = "free_y") +
+  labs(x = "Time (seconds)",
+       y = "Count",
+       title = "Different Event Frequencies",
+       subtitle = "GOAL = goal, MISS = missed net, SHOT = shot on target") 
+
+
+
 #Looking at how shot distance affects types of shots--------------------------
+
+#Hypothesis: shot distance does affect shot type as players need to do different things in different areas to score
+
+#Conclusion: This holds true in the plot as there are disparities in shot distance between types of shots
+
+
 playoff_shot_data %>%
   ggplot(aes(x = shotType, y = shotDistance)) +
   geom_violin(aes(fill = shotType), draw_quantiles = c(0.25, 0.5, 0.75)) +
@@ -74,12 +147,18 @@ playoff_shot_data %>%
   labs(x = "Shot Type",
        y = "Shot Distance",
        title = "How Shot Distance Affects Shot Type",
-       subtitle = "Shots used from the 2021 Stanley Cup Playoffs")
+       subtitle = "Shots used from the 2021 Stanley Cup Playoffs") +
+    coord_flip()
 
 
 
 
-# New Variables- Goals/Shots ----------------------------------------------
+
+############################ ADDITIONAL VISUALIZATION AND EXPLORATION ###################################### 
+
+# Relationship Between Shot Distance and Goals Made -----------------------
+
+# New Variables- Goals/Shots 
 
 playoff_shot_data <- playoff_shot_data %>%
   mutate(goal = ifelse(event == "GOAL", 1, 0))
@@ -99,9 +178,7 @@ team_shot_perc <- team_shots %>%
   mutate(shot_perc = goals / shots)
 
 
-
-
-# Relationship Between Shot Distance and Goals Made -----------------------
+# Visulaization
 
 team_shot_perc %>%
   ggplot(aes(x = avg_distance, y = shot_perc)) +
@@ -116,20 +193,23 @@ team_shot_perc %>%
 
 
 
-
 # Exploring Shot Angle ----------------------------------------------------
 
+#Histogram
 hist(playoff_shot_data$shotAngle, breaks = 100)
 
+#Shot Angle sd
 player_shot_angles <- playoff_shot_data %>%
   group_by(shooterName) %>%
   summarize(shots = n(),
             shot_angle_sd = sd(shotAngle)) %>%
   filter(shots >= 10)
 
+#Overtime- 1, Regular Time- 0
 playoff_shot_data <- playoff_shot_data %>%
   mutate(is_overtime = ifelse(period > 3, 1, 0))
 
+#Violin plot
 playoff_shot_data %>%
   ggplot(aes(x = as.factor(goal), y = abs(shotDistance))) +
   geom_violin(aes(fill = as.factor(is_overtime)), draw_quantiles = c(0.25, 0.5, 0.75)) +
@@ -138,18 +218,64 @@ playoff_shot_data %>%
 
 
 
-# Exploring Shooter Time on Ice and Shots Taken ---------------------------
+#Frequency of Events & Shot Types- Tile Plot & Mosaic Plot---------------------------
 
 playoff_shot_data %>%
-  filter(shooterTimeOnIce <= 150) %>%
-  ggplot(aes(x = shooterTimeOnIce)) +
-  geom_density(fill = "darkgreen", alpha = 0.8) +
-  geom_vline(xintercept = 16, linetype = "dashed") +
-  geom_vline(xintercept = 28, linetype = "dashed") +
-  geom_vline(xintercept = 42, linetype = "dashed") +
-  #geom_histogram(fill = "darkgreen", color = "black", bins = 50) +
-  theme_reach() +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))
+  group_by(shotType, event) %>%
+  summarize(count = n(),
+            joint_prob = count / nrow(playoff_shot_data)) %>%
+  ggplot(aes(x = shotType, y = event)) +
+  geom_tile(aes(fill = count), color = "white") +
+  geom_text(aes(label = round(joint_prob, digits = 3)), color = "white") +
+  scale_fill_gradient(high = "darkorange", low = "darkblue") +
+  theme_reach() + 
+  labs(x = "Shot Type",
+       y = "Event",
+       fill = "Count",
+       title = "Frequency of Events and Shot Type",
+       subtitle = "2021 Stanley Cup Playoffs") +
+  theme(legend.position = "bottom")
+
+#checks independence
+mosaic(~ shotType + event, data = playoff_shot_data)
+
+
+
+# Early Experimentation with Shots vs Period ------------------------------
+
+#simple histogram of all shots
+playoff_shot_data %>%
+  filter(time <= 3600) %>%
+  ggplot(aes(x = time)) +
+  #geom_density(aes(x = time), fill = "darkblue", alpha = 0.6) +
+  geom_histogram(fill = "darkorange", alpha = 0.6, binwidth = 80) +
+  geom_vline(xintercept = 1200) +
+  geom_vline(xintercept = 2400) +
+  theme_reach() 
+
+#Specifiying Goals
+goals <- playoff_shot_data %>%
+  filter(event == "GOAL")
+
+#simple histogram of all goals
+goals %>%
+  filter(time <= 3600) %>%
+  ggplot(aes(x = time)) +
+  #geom_density(aes(x = time), fill = "darkblue", alpha = 0.6) +
+  geom_histogram(fill = "darkblue", alpha = 0.6, binwidth = 80) +
+  geom_vline(xintercept = 1200) +
+  geom_vline(xintercept = 2400) +
+  theme_reach() 
+
+#freqpoly of event vs time
+playoff_shot_data %>%
+  filter(time<=3600) %>% 
+  ggplot(aes(x = time,
+             color = event)) +
+  geom_freqpoly() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
 
 
 
