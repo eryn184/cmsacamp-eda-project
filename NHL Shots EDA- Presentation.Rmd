@@ -1,0 +1,56 @@
+---
+title: "Early Data Analysis: Hockey"
+author: "Nicole Tucker, Ruby Wu, Tej Seth"
+date: "June 17th, 2021"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(fig.retina = 3, warning = FALSE, message = FALSE)
+```
+
+```{r xaringan-themer, include=FALSE, warning=FALSE}
+library(xaringanthemer)
+style_mono_accent(base_color = "#cc002b")
+```
+
+## How does hockey work?
+
+Loaded in a dataset of all the shots in the 2021 Stanley Cup Playoffs from [`moneypuck`](http://www.stat.cmu.edu/cmsac/sure/2021/materials/data/xy_examples/moneypuck_shots_2020.csv):
+
+```{r load-data, warning = FALSE, message = FALSE}
+library(tidyverse)
+playoff_shot_data <- read_csv("http://www.stat.cmu.edu/cmsac/sure/2021/materials/data/xy_examples/moneypuck_shots_2020.csv") %>%
+  dplyr::filter(isPlayoffGame == 1)
+```
+
+```{r clean-data, warning = FALSE, message = FALSE, echo = FALSE}
+# Now only select columns to work with for this task:
+playoff_shot_data <- playoff_shot_data %>%
+  dplyr::select(# Player info attempting the shot
+    shooterPlayerId, shooterName, team, shooterLeftRight, 
+    shooterTimeOnIce, shooterTimeOnIceSinceFaceoff,
+    # Info about the shot:
+    event, location, shotType, shotAngle, shotAnglePlusRebound, 
+    shotDistance, shotOnEmptyNet, shotRebound, shotRush, 
+    shotWasOnGoal, shotGeneratedRebound, shotGoalieFroze,
+    # Adjusted for arena locations
+    arenaAdjustedShotDistance, 
+    arenaAdjustedXCord, arenaAdjustedYCord,
+    # Goalie info:
+    goalieIdForShot, goalieNameForShot,
+    # Team context
+    teamCode, isHomeTeam, homeSkatersOnIce, awaySkatersOnIce,
+    # Game context
+    game_id, homeTeamCode, awayTeamCode, homeTeamGoals,
+    awayTeamGoals, time, period)
+```
+
+---
+
+## Second slide
