@@ -277,5 +277,50 @@ playoff_shot_data %>%
   theme(legend.position = "bottom")
 
 
+# Clustering with player's stats ------------------------------
+
+#getting our player-level data ready for clustering
+player_shot_stats <- playoff_shot_data %>%
+  group_by(shooterName) %>%
+  summarize(shots = n(),
+            avg_shot_distance = mean(shotDistance, na.rm = T),
+            avg_shot_angle = mean(shotAngle, na.rm = T)) %>%
+  filter(shots >= 10)
+
+#creating a basic clustering algorithm
+init_nhl_kmeans <- 
+  kmeans(dplyr::select(player_shot_stats, avg_shot_distance, avg_shot_angle),
+         algorithm = "Lloyd", centers = 4, nstart = 100)
+
+#plotting the basic clustering algorithm
+player_shot_stats %>%
+  mutate(player_clusters = as.factor(init_nhl_kmeans$cluster)) %>%
+  ggplot(aes(x = avg_shot_distance, y = avg_shot_angle,
+             color = player_clusters)) +
+  geom_jitter(alpha = 0.5, size = 3) +
+  theme_bw() +
+  ggthemes::scale_color_colorblind()
+
+#Using K Means++ 
+nhl_kmeanspp <- 
+  kcca(dplyr::select(player_shot_stats,
+                     avg_shot_distance, avg_shot_angle), k = 4,
+       control = list(initcent = "kmeanspp"))
+
+#plotting K-Means++
+player_shot_stats %>%
+  mutate(Cluster = 
+           as.factor(nhl_kmeanspp@cluster)) %>% #must use the @ symbol 
+  ggplot(aes(x = avg_shot_distance, y = avg_shot_angle,
+             color = Cluster)) +
+  geom_jitter(alpha = 0.7, size = 3) + 
+  scale_fill_brewer(palette = "Paired") +
+  theme_reach() +
+  labs(x = "Average Shot Distance",
+       y = "Average Shot Angle",
+       title = "NHL Player Clustering Based on Shot Distance and Shot Angle",
+       fill = "Cluster") +
+  theme(legend.position = "bottom")
+
 
 
