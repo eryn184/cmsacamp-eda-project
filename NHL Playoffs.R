@@ -7,6 +7,8 @@
 library(tidyverse)
 library(ggthemes)
 library(ggridges)
+library(flexclust)
+library(ggdendro)
 
 # Load and Clean Data -----------------------------------------------------
 
@@ -39,14 +41,16 @@ playoff_shot_data <- playoff_shot_data %>%
 # Exploring the Data Structure --------------------------------------------
 
 dim(playoff_shot_data)
-nrow(playoff_shot_data)
-ncol(playoff_shot_data)
 
-class(playoff_shot_data)
-
+#There's 36 columns of 5,121 shots taken
 
 head(playoff_shot_data)
 colnames(playoff_shot_data)
+
+#Categorical variables: shooterName, event, shotGeneratedRebound
+#Continuous variables: shooterTimeOnIce, shotAngle, shotDistance, time
+
+#Each row and observation is a singular shot taken during the 2021 Stanley Cup Playoffs
 
 
 
@@ -321,6 +325,44 @@ player_shot_stats %>%
        title = "NHL Player Clustering Based on Shot Distance and Shot Angle",
        fill = "Cluster") +
   theme(legend.position = "bottom")
+
+#Hierarchical Clustering
+
+hockey_player_dist <- dist(dplyr::select(player_shot_stats,
+                                         avg_shot_distance, avg_shot_angle))
+
+hockey_complete_hclust <- hclust(hockey_player_dist, method = "complete")
+
+ggdendrogram(hockey_complete_hclust, theme_dendro = FALSE,
+             labels = FALSE, leaf_labels = FALSE) +
+  labs(y = "Dissimilarity between clusters") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+#we can tell from this graph that 4 clusters seems to be the right choice
+
+player_shot_stats %>%
+  mutate(Cluster = as.factor(cutree(hockey_complete_hclust, k = 5))) %>%
+  ggplot(aes(x = avg_shot_distance, y = avg_shot_angle,
+             color = Cluster)) +
+  geom_jitter(alpha = 0.7, size = 4) + 
+  scale_fill_brewer(palette = "Paired") +
+  theme_reach() +
+  labs(x = "Average Shot Distance",
+       y = "Average Shot Angle",
+       title = "NHL Player Clustering Based on Shot Distance and Shot Angle",
+       fill = "Cluster") +
+  theme(legend.position = "bottom")
+
+#the player with the longest average shot distance was Logan Stanley, a defenceman for the Winnipeg Jets. His long shot distance can be explained by often playing behind wings and therefore having to shoot from longer distances to make an impact.
+#purple = right wing
+#green = left wing
+#gold = center
+#blue = right defensemen
+#red = left defensemen
+#we chose k = 5 because there are 5 main positions in hockey that shoot
 
 
 

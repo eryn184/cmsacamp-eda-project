@@ -19,7 +19,25 @@ library(xaringanthemer)
 style_mono_accent(base_color = "#cc002b")
 ```
 
-## How does hockey work?
+## The Moneypuck Dataset
+
+```{r load-packages, warning = FALSE, message = FALSE, echo = FALSE}
+library(tidyverse)
+library(ggthemes)
+library(ggridges)
+library(flexclust)
+library(ggdendro)
+theme_reach <- function() {
+  theme_fivethirtyeight() +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(size = 20, hjust = 0.5, face = "bold"),
+      plot.subtitle = element_text(size = 10, hjust = 0.5),
+      axis.title.x = element_text(size=14),
+      axis.title.y = element_text(size=14)
+    )
+}
+```
 
 Loaded in a dataset of all the shots in the 2021 Stanley Cup Playoffs from [`moneypuck`](http://www.stat.cmu.edu/cmsac/sure/2021/materials/data/xy_examples/moneypuck_shots_2020.csv):
 
@@ -50,7 +68,60 @@ playoff_shot_data <- playoff_shot_data %>%
     game_id, homeTeamCode, awayTeamCode, homeTeamGoals,
     awayTeamGoals, time, period)
 ```
+There's 36 columns of 5,121 shots taken
+
+Categorical variables: shooterName, event, shotGeneratedRebound
+Continuous variables: shooterTimeOnIce, shotAngle, shotDistance, time
+
+Each row and observation is a singular shot taken during the 2021 Stanley Cup Playoffs
+
+```{r display-data, warning = FALSE, message = FALSE, echo = FALSE}
+playoff_shot_data %>% slice_head(n = 2) %>% select(shooterPlayerId, shooterName, team, shooterTimeOnIce)
+```
+---
+
+## Hypothesis #1: Shooter Time on Ice
+
+Hypothesis: Since player's usually spend slightly less than a minute on ice, we theorized that players will shoot within the first ~20 seconds of coming on the ice because that's when they have the most energy. 
+
+```{r graph-1, warning = FALSE, message = FALSE, echo = FALSE}
+playoff_shot_data %>%
+  filter(shooterTimeOnIce <= 150) %>%
+  ggplot(aes(x = shooterTimeOnIce)) +
+  geom_density(fill = "darkorange", alpha = 0.8) +
+  geom_vline(xintercept = quantile(playoff_shot_data$shooterTimeOnIce,0.25), linetype = "dashed") +
+  geom_vline(xintercept = quantile(playoff_shot_data$shooterTimeOnIce,0.50), linetype = "dashed") +
+  geom_vline(xintercept = quantile(playoff_shot_data$shooterTimeOnIce,0.75), linetype = "dashed") +
+  annotate("text", x = 14.5, y = 0.0023, label = "25th percentile", angle = 90) +
+  annotate("text", x = 40.5, y = 0.0023, label = "75th percentile", angle = 90) +
+  theme_reach() +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(x = "Player's Time on Ice",
+       y = "Density",
+       title = "Player's Shoot Mostly Between 16 and 42 Seconds On Ice")
+```
+
+The data slightly supports the hypothesis as the 25th and 75th percentiles show the bulk of players will shoot between 16 and 42 seconds of coming on ice. The distribution is right-skewed showing players will shoot earlier in their shifts rather than later. 
 
 ---
 
-## Second slide
+#Hypothesis #2: Shot Distance vs Rebounds
+
+Since research has been done before in the past that shows in basketball, longer shot distance increases rebound rate we thought the same principles would apply to hockey.
+
+```{r graph-2, warning = FALSE, message = FALSE, echo = FALSE}
+playoff_shot_data %>%
+  ggplot(aes(x = arenaAdjustedShotDistance, color = as.factor(shotGeneratedRebound))) +
+  stat_ecdf(size = 1.5) +
+  theme_reach() +
+  scale_color_manual("Shot Generated Rebound",values=c("darkorange","darkblue")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  geom_hline(yintercept = 0.50, linetype = "dashed", color = "red") +
+  labs(x = "Arena Adjusted Shot Distance",
+       y = "Percent of Rebounds",
+       fill = "Shot Generated Rebound",
+       title = "Shots Closer to the Goal Generate More Rebounds") +
+  theme(legend.position = "bottom")
+```
+We found shots closer to the goal generate more rebounds, the opposite of our hypothesis. 50% of rebounds occur while the shot is taken within 25 feet of the goal while non-rebounds happen 50% of the time within 35 feet, a significant difference.
